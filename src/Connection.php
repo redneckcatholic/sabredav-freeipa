@@ -8,16 +8,16 @@
  * @version 0.01
  *
  * This class represents a connection to a FreeIPA domain. An instance should
- * be instansiated in server.php and passed to the FreeIpaAuthentication and
- * FreeIpaPrincipal backends.
+ * be instantiated in server.php and passed to the FreeIPA\AuthBackend and
+ * FreeIPA\PrincipalBackend objects.
  *
  * No arguments are necessary, but you may override the autodetection with
  * the following invocation:
  *
  *   new \FreeIPA\Connection((
- *     domain = null,
- *     realm = null,
- *     baseDn = null,
+ *     domain  = null,
+ *     realm   = null,
+ *     baseDn  = null,
  *     ldapUri = null
  *   )
  */
@@ -25,6 +25,8 @@
 declare(strict_types=1);
 
 namespace FreeIPA;
+
+use Sabre\DAV\Exception;
 
 class Connection {
 
@@ -38,30 +40,26 @@ class Connection {
     if ($localFqdn = gethostbyaddr(gethostbyname(gethostname()))) {
       $domain = strtolower(explode('.', $localFqdn, 2)[1]);
       if (!in_array($domain, [$localFqdn, 'localhost', 'localdomain', 'localhost.localdomain'])) {
-        $this->domain = $domain;
-        return true;
+        return $this->domain = $domain;
       }
     }
-    return false;
+    throw new Exception("Failed to discover local FreeIPA domain");
   }
 
   protected function discoverKerberosRealm() {
     if ($kerberosTxtRecord = dns_get_record("_kerberos.{$this->domain}", DNS_TXT)) {
-      $this->realm = $kerberosTxtRecord[0]['txt'];
-      return true;
+      return $this->realm = $kerberosTxtRecord[0]['txt'];
     }
-    return false;
+    return $this->realm = strtoupper($this->domain);
   }
 
   protected function discoverLdapServers() {
     if ($ldapSrvRecords = dns_get_record("_ldap._tcp.{$this->domain}", DNS_SRV)) {
-      foreach ($ldapSrvRecords as $record) {
-        $ldapUris[] = "ldap://$record[target]:$record[port]";
-      }
-      $this->ldapUri = implode(' ', $ldapUris);
-      return true;
+      return $this->ldapUri = implode(' ' , array_map(function($record) {
+        return "ldap://$record[target]:$record[port]";
+      }, $ldapSrvRecords));
     }
-    return false;
+    throw new Exception("Failed to discover local LDAP servers via DNS");
   }
 
   protected function discoverBaseDn() {
@@ -70,12 +68,11 @@ class Connection {
       if ($rootDse = ldap_first_entry($this->ldapConn, $results)) {
         $attributes = ldap_get_attributes($this->ldapConn, $rootDse);
         if ($attributes['defaultnamingcontext']['count'] == 1) {
-          $this->baseDn = $attributes['defaultnamingcontext'][0];
-          return true;
+          return $this->baseDn = $attributes['defaultnamingcontext'][0];
         }
       }
     }
-    return false;
+    return $this->guessBaseDnFromRealm();
   }
 
   protected function guessBaseDnFromRealm() {
@@ -90,22 +87,22 @@ class Connection {
     // get local domain
     if (!empty($domain)) {
       $this->domain = $domain;
-    } elseif (!$this->discoverDnsDomain()) {
-      throw new Exception("Failed to discover local FreeIPA domain");
+    } else {
+      $this->discoverDnsDomain();
     }
 
     // get local realm
     if (!empty($realm)) {
       $this->realm = $realm;
-    } elseif (!$this->discoverKerberosRealm()) {
-      $this->realm = strtoupper($this->domain);
+    } else {
+      $this->discoverKerberosRealm();
     }
 
     // get ldap servers
     if (!empty($ldapUri)) {
       $this->ldapUri = $ldapUri;
-    } elseif (!$this->DiscoverLdapServers()) {
-      throw new Exception("Failed to discover local LDAP servers via DNS");
+    } else {
+      $this->discoverLdapServers();
     }
 
     // connect to ldap server
@@ -131,18 +128,18 @@ class Connection {
     // get base dn
     if (!empty($baseDn)) {
       $this->basedn = $baseDn;
-    } elseif (!$this->discoverBaseDn()) {
-      $this->guessBaseDnFromRealm();
+    } else {
+      $this->discoverBaseDn();
     }
   }
 
-  public function search($base = null, $filter = null, $attributes = []) {
-    error_log("ipa->search($base, $filter)");
-    if ($filter == null) {
-      $filter = '(objectClass=*)';
-    }
-
-    if ($result = ldap_search($this->ldapConn, ($base ? $base.','.$this->baseDn : $this->baseDn), $filter, $attributes)) {
+  public function search($container = null, $filter = null, $attributes = []) {
+    if ($result = ldap_search(
+      $this->ldapConn,
+      ($container ? "{$container},{$this->baseDn}" : $this->baseDn),
+      ($filter ? $filter : '(objectClass=*)'),
+      $attributes))
+    {
       if ($entries = ldap_get_entries($this->ldapConn, $result)) {
         if ($entries['count'] > 0) {
           return $entries;
@@ -152,13 +149,13 @@ class Connection {
     return false;
   }
 
-  public function read($base, $filter = '(objectClass=*)', $attributes = []) {
-    error_log("ipa->read($base, $filter)");
-    if ($filter == null) {
-      $filter = '(objectClass=*)';
-    }
-
-    if ($result = ldap_read($this->ldapConn, $base . ',' . $this->baseDn, $filter, $attributes)) {
+  public function read($container = null, $filter = null, $attributes = []) {
+    if ($result = ldap_read(
+      $this->ldapConn,
+      ($container ? "{$container},{$this->baseDn}" : $this->baseDn),
+      ($filter ? $filter : '(objectClass=*)'),
+      $attributes))
+    {
       if ($entries = ldap_get_entries($this->ldapConn, $result)) {
         if ($entries['count'] > 0) {
           return $entries[0];
@@ -166,10 +163,6 @@ class Connection {
       }
     }
     return false;
-  }
-
-  public function getBaseDn() {
-    return $this->baseDn;
   }
 
   public function resolveDn(...$components) {
