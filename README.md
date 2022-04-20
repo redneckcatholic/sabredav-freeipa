@@ -29,6 +29,7 @@ to kerberos credentials in order to perform LDAP queries (see [below](#apache-co
 
 I've only tested this on Rocky Linux 8 with Apache 2.4 and PHP 7.4.
 
+
 ## Limitations
 
 SabreDAV assumes that user and group principals are both stored in the same
@@ -40,6 +41,7 @@ work around this limitation, it is not a tested or supported configuration.
 
 In the event a username and groupname clash, the user takes precendence and the
 group will not be visible to SabreDAV.
+
 
 ## Setup
 
@@ -88,6 +90,31 @@ users and groups will be visible. This is bad for two reasons:
 2. Sabredav makes a *lot* of group membership queries, seemingly on every
    request. Querying group memberships across your entire FreeIPA domain on
    every CalDAV operation is ridiculously expensive.
+
+Consider the example configuration above. Assuming the `dav-access` FreeIPA group
+looks like this:
+
+    $ ipa group-show dav-access
+    Group name: dav-access
+    Description: CalDAV/CardDAV access
+    Member groups: accounting, human-resources
+    Indirect Member users: benedict, leo, michael
+
+Then SabreDAV would only see the following groups:
+
+   - dav-access
+   - accounting
+   - human-resources
+
+and similarly, only the members of those groups would show up as SabreDAV users:
+
+   - benedict
+   - leo
+   - michael
+
+This type of configuration is possible because FreeIPA supports nested groups
+(a group itself can be a member of another group).
+
 
 ## Apache Configuration
 
