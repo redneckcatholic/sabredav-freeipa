@@ -37,7 +37,7 @@ SabreDAV assumes that user and group principals are both stored in the same
 and group in FreeIPA with the same name.
 
 While you can [allegedly](https://sabre.io/dav/principals/#custom-principal-url-schemes)
-work around this limitation, it is not a tested or supported configuration.
+work around this limitation, it is neither tested nor supported.
 
 In the event a username and groupname clash, the user takes precendence and the
 group will not be visible to SabreDAV.
