@@ -55,7 +55,6 @@ class Util {
     if ($filter) {
       $filter = '(' . ($test === 'anyof' ? '|' : '&') . $filter . ')';
     }
-
     return $filter;
   }
 
@@ -84,7 +83,6 @@ class Util {
         throw new \Sabre\DAV\Exception\BadRequest("Unknown property: $property");
       }
     }
-
     return self::buildFilter($test, ...$conditions);
   }
 
@@ -111,7 +109,6 @@ class Util {
         $conditions[] = 'cn=' . ldap_escape($groupname);
       }
     }
-
     return self::buildFilter('anyof', ...$conditions);
   }
 }

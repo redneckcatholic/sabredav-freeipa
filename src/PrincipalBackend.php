@@ -69,9 +69,7 @@ class PrincipalBackend extends \Sabre\DAVACL\PrincipalBackend\AbstractBackend {
 
   const PROXY_CHILDREN = [
     'calendar-proxy-read',
-    'calendar-proxy-write',
-    'addressbook-proxy-read',
-    'addressbook-proxy-write'
+    'calendar-proxy-write'
   ];
 
   protected $ipa;
@@ -308,10 +306,9 @@ class PrincipalBackend extends \Sabre\DAVACL\PrincipalBackend\AbstractBackend {
     if ($parts[0] == 'principals') {
       switch (count($parts)) {
         case 1: $principals = $this->getPrincipals($searchProperties, $test);
-        case 2: $results = $this->getPrincipalChildren($parts[1], $searchProperties, $test);
+        case 2: $principals = $this->getPrincipalChildren($parts[1], $searchProperties, $test);
       }
     }
-
     return array_map(function($p) { return $p['uri']; }, $principals);
   }
 
@@ -375,7 +372,6 @@ class PrincipalBackend extends \Sabre\DAVACL\PrincipalBackend\AbstractBackend {
         throw new \Sabre\DAV\Exception('Principal not found');
       }
     }
-
     return [];
   }
 
@@ -398,7 +394,6 @@ class PrincipalBackend extends \Sabre\DAVACL\PrincipalBackend\AbstractBackend {
         throw new \Sabre\DAV\Exception('Principal not found');
       }
     }
-
     return [];
   }
 

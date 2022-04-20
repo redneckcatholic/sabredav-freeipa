@@ -129,7 +129,6 @@ class Group {
     {
       return self::fromLdapEntry($entry);
     }
-
     return null;
   }
 
@@ -138,7 +137,7 @@ class Group {
    * members, subject to $allowedGroups.
    *
    * @param \FreeIPA\Connection $ipaConn       : freeipa connection object
-   * @param array               $allowedGroups : only consider the given groups
+   * @param array               $allowedGroups : only consider members of the given groups
    *
    * @return array
    */
@@ -149,8 +148,7 @@ class Group {
       User::LDAP_CONTAINER,
       Util::buildFilter('allof',
         ['objectClass', User::LDAP_OBJECT_CLASS],
-        ['memberof',  $ipaConn->resolveDn('cn='.ldap_escape($this->name), self::LDAP_CONTAINER)],
-        // TODO: is this necessary?
+        ['memberof',  $ipaConn->resolveDn($this->getRelativeDn())],
         Util::buildMemberOfFilter($ipaConn, $allowedGroups)),
       ['uid']))
     {
@@ -158,7 +156,6 @@ class Group {
         $memberPrincipals[] = User::PRINCIPAL_PREFIX . $entries[$i]['uid'][0];
       }
     }
-
     return $memberPrincipals;
   }
 
