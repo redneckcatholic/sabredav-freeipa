@@ -82,15 +82,35 @@ class PrincipalBackend extends \Sabre\DAVACL\PrincipalBackend\AbstractBackend {
     $this->allowedGroups = $allowedGroups;
   }
 
-  public function setAllowedGroups($allowedGroups) {
-    $this->allowedGroups = $allowedGroups;
-  }
-
+  /**
+   * Splits a string on the path separator (/). If any resulting substrings are
+   * empty, they are discarded.
+   *
+   * For example:
+   *   splitPath('/one//two/') -> ['one', 'two']
+   *
+   * @param string $path
+   * @return array
+   */
   protected static function splitPath($path) {
     return preg_split('/\//', $path, -1, PREG_SPLIT_NO_EMPTY);
   }
 
-  protected function getPrincipals($searchProperties = [], $test = 'anyof') {
+  /**
+   * Returns an array of principals for each user and group in the FreeIPA domain,
+   * subject to $allowedGroups.
+   *
+   * If $searchProperties is specified, only users or groups matching the given
+   * criteria are returned.
+   *
+   * If a matching user and group both have the same name, the group is ignored.
+   *
+   * @param array  $searchProperties : DAV search properties
+   * @param string $test             : either 'anyof' or 'allof'
+   *
+   * @return array : array of associative arrays, each representing a principal
+   */
+  protected function getPrincipals(array $searchProperties = [], $test = 'anyof') {
     $principals = [];
 
     // Get groups.
@@ -106,7 +126,25 @@ class PrincipalBackend extends \Sabre\DAVACL\PrincipalBackend\AbstractBackend {
     return array_values($principals);
   }
 
-  protected function getPrincipal($name, $searchProperties = [], $test = 'anyof') {
+  /**
+   * Returns a principal for the user or group with the given name, subject to
+   * $allowedGroups.
+   *
+   * If $searchProperties is specified, only a user or group matching the given
+   * criteria is returned.
+   *
+   * If a matching user and group both have the same name, the user principal is
+   * returned.
+   *
+   * If no matching user or group is found, null is returned.
+   *
+   * @param string $name             : user or group name
+   * @param array  $searchProperties : DAV search properties
+   * @param string $test             : either 'anyof' or 'allof'
+   *
+   * @return array|null : associative array representing the principal
+   */
+  protected function getPrincipal($name, array $searchProperties = [], $test = 'anyof') {
     if ($user = User::get($this->ipa, $name, $searchProperties, $test, $this->allowedGroups)) {
       return $user->toPrincipal();
     } elseif ($group = Group::get($this->ipa, $name, $searchProperties, $test, $this->allowedGroups)) {
@@ -115,7 +153,22 @@ class PrincipalBackend extends \Sabre\DAVACL\PrincipalBackend\AbstractBackend {
     return null;
   }
 
-  protected function getPrincipalChildren($name, $searchProperties = [], $test = 'anyof') {
+  /**
+   * Returns an array of principals corresponding to each DAV proxy principal for
+   * the given user or group, subject to $allowedGroups.
+   *
+   * If $searchProperties is specified, only proxy principals for a user or group
+   * matching the given criteria are considered.
+   *
+   * If a matching user and group both have the same name, the user is used.
+   *
+   * @param string $name             : user or group name
+   * @param array  $searchProperties : DAV search properties
+   * @param string $test             : either 'anyof' or 'allof'
+   *
+   * @return array : array of associative arrays, each representing a proxy principal
+   */
+  protected function getPrincipalChildren($name, array $searchProperties = [], $test = 'anyof') {
     $principals = [];
 
     if ($parent = $this->getPrincipal($name, $searchProperties, $test)) {
@@ -126,7 +179,23 @@ class PrincipalBackend extends \Sabre\DAVACL\PrincipalBackend\AbstractBackend {
     return $principals;
   }
 
-  protected function getPrincipalChild($name, $childName, $searchProperties = [], $test = 'anyof') {
+  /**
+   * Returns a principals corresponding to the requested proxy principal for
+   * the given user or group, subject to $allowedGroups.
+   *
+   * If $searchProperties is specified, only a user or group matching the given
+   * criteria is considered.
+   *
+   * If no matching user or group is found, null is returned.
+   *
+   * @param string $name             : user or group name
+   * @param string $childName        : proxy principal name
+   * @param array  $searchProperties : DAV search properties
+   * @param string $test             : either 'anyof' or 'allof'
+   *
+   * @return array|null : associative array representing the proxy principal
+   */
+  protected function getPrincipalChild($name, $childName, array $searchProperties = [], $test = 'anyof') {
     if (in_array($childName, self::PROXY_CHILDREN)) {
       if ($parent = $this->getPrincipal($name, $searchProperties, $test)) {
         return [ 'uri' => "$parent[uri]/$childName" ];
@@ -342,5 +411,14 @@ class PrincipalBackend extends \Sabre\DAVACL\PrincipalBackend\AbstractBackend {
    */
   public function setGroupMemberSet($principal, array $members) {
     throw new \Sabre\DAV\Exception\Forbidden('Permission denied to modify LDAP-backed principal');
+  }
+
+  /**
+   * Sets the groups from which user and group principals will be considered.
+   *
+   * @param array $allowedGroups
+   */
+  public function setAllowedGroups(array $allowedGroups) {
+    $this->allowedGroups = $allowedGroups;
   }
 }

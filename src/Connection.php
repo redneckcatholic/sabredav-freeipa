@@ -36,6 +36,9 @@ class Connection {
   protected $ldapUri;
   protected $ldapConn;
 
+  /**
+   * Discover the local DNS domain by querying the local FQDN.
+   */
   protected function discoverDnsDomain() {
     if ($localFqdn = gethostbyaddr(gethostbyname(gethostname()))) {
       $domain = strtolower(explode('.', $localFqdn, 2)[1]);
@@ -46,6 +49,9 @@ class Connection {
     throw new Exception("Failed to discover local FreeIPA domain");
   }
 
+  /**
+   * Discover the local kerberos realm by querying the _kerberos SRV record.
+   */
   protected function discoverKerberosRealm() {
     if ($kerberosTxtRecord = dns_get_record("_kerberos.{$this->domain}", DNS_TXT)) {
       return $this->realm = $kerberosTxtRecord[0]['txt'];
@@ -53,6 +59,9 @@ class Connection {
     return $this->realm = strtoupper($this->domain);
   }
 
+  /**
+   * Discover the local LDAP servers by querying the _ldap SRV record.
+   */
   protected function discoverLdapServers() {
     if ($ldapSrvRecords = dns_get_record("_ldap._tcp.{$this->domain}", DNS_SRV)) {
       return $this->ldapUri = implode(' ' , array_map(function($record) {
@@ -62,6 +71,10 @@ class Connection {
     throw new Exception("Failed to discover local LDAP servers via DNS");
   }
 
+  /**
+   * Discover the LDAP basedn by querying the root DSE. On failure, guess the basedn
+   * from the local kerberos realm.
+   */
   protected function discoverBaseDn() {
     $results = ldap_read($this->ldapConn, '', 'objectClass=*', ['defaultnamingcontext']);
     if ($results && ldap_count_entries($this->ldapConn, $results) == 1) {
@@ -75,6 +88,11 @@ class Connection {
     return $this->guessBaseDnFromRealm();
   }
 
+  /**
+   * Construct an (assumed) LDAP basen from the components of the local kerberos realm.
+   *
+   * @return string
+   */
   protected function guessBaseDnFromRealm() {
     $this->baseDn = implode(',', preg_filter('/^/', 'dc=', explode('.', strtolower($this->realm))));
   }
@@ -133,6 +151,15 @@ class Connection {
     }
   }
 
+  /**
+   * Perform an LDAP search of the FreeIPA directory with subtree scope.
+   *
+   * @param string $container : ldap container relative to basedn (eg. 'cn=users,cn=accounts')
+   * @param string $filter    : ldap filter
+   * @param array $attributes : ldap attributes to return
+   *
+   * @return array|false
+   */
   public function search($container = null, $filter = null, $attributes = []) {
     if ($result = ldap_search(
       $this->ldapConn,
@@ -149,6 +176,15 @@ class Connection {
     return false;
   }
 
+  /**
+   * Perform an LDAP search of the FreeIPA directory with subtree base.
+   *
+   * @param string $container : ldap container relative to basedn (eg. 'cn=users,cn=accounts')
+   * @param string $filter    : ldap filter
+   * @param array $attributes : ldap attributes to return
+   *
+   * @return array|false
+   */
   public function read($container = null, $filter = null, $attributes = []) {
     if ($result = ldap_read(
       $this->ldapConn,
@@ -165,10 +201,27 @@ class Connection {
     return false;
   }
 
+  /**
+   * Given a list of DN components relative to the base DN, constructs the
+   * fully-qualified DN.
+   *
+   * For example:
+   *   resolveDn('uid=joseph', 'cn=users,cn=accounts')
+   *     -> 'uid=joseph,cn=users,cn=accounts,dc=ipa,dc=example,dc=com'
+   *
+   * @param string $components...
+   *
+   * @return string
+   */
   public function resolveDn(...$components) {
     return implode(',', array_merge($components, [$this->baseDn]));
   }
 
+  /**
+   * Returns the local kerberos realm.
+   *
+   * @return string
+   */
   public function getRealm() {
     return $this->realm;
   }
