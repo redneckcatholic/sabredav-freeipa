@@ -100,7 +100,7 @@ looks like this:
     Member groups: accounting, human-resources
     Indirect Member users: benedict, leo, michael
 
-Then SabreDAV would only see the following groups:
+then SabreDAV would only see the following groups:
 `dav-access`, `accounting`, `human-resources`
 
 And similarly, only the members of those groups would show up as SabreDAV users:
@@ -167,5 +167,5 @@ If you're not using gssproxy, you'll need the usual `KRB5_KTNAME` and
 You'll also need the following if SELinux is enabled:
 
 ```bash
-  setsebool -P httpd_can_connect_ldap on
+setsebool -P httpd_can_connect_ldap on
 ```
