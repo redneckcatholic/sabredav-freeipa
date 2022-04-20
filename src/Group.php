@@ -172,7 +172,7 @@ class Group {
   }
 
   /**
-   * Get the username.
+   * Get the groupname.
    *
    * @return string
    */
