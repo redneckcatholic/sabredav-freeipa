@@ -56,7 +56,7 @@
  *
  * 2. Sabredav makes a *lot* of group membership queries, seemingly on every
  *    request. Querying group memberships across your entire FreeIPA domain on
- *    every CalDAV operation is ridculously expensive.
+ *    every CalDAV operation is ridiculously expensive.
  */
 
 declare(strict_types=1);

@@ -23,6 +23,19 @@ require_once 'vendor/autoload.php';
 
 // freeipa
 $ipa = new \FreeIPA\Connection();
+
+/**
+ * If $allowedGroups is nonempty, only users and groups that are members of one
+ * of the specified groups will be visible to SabreDAV. Recall that in FreeIPA,
+ * groups can be members of other groups.
+ *
+ * In addition, only members of one of the specified groups will be allowed to
+ * login.
+ *
+ * If $allowedGroups is empty, then *every* FreeIPA user and *every* FreeIPA
+ * group will be visible as a SabreDAV principal. This can cause performance
+ * issues due to the large number of LDAP queries issued.
+ */
 $allowedGroups = [
   'dav-access'
 ];
@@ -39,6 +52,9 @@ $server = new Sabre\DAV\Server([
   new \Sabre\CalDAV\CalendarRoot($principalBackend, $caldavBackend),
   new \Sabre\CardDAV\AddressBookRoot($principalBackend, $carddavBackend)
 ]);
+
+// if you run sabredav from a subdirectory, set it here
+$server->setBaseUri('/');
 
 // plugins
 $server->addPlugin(new \Sabre\DAV\Auth\Plugin($authBackend,'SabreDAV'));
@@ -63,5 +79,5 @@ $server->addPlugin(new \Sabre\CalDAV\ICSExportPlugin());
 $server->addPlugin(new \Sabre\CardDAV\Plugin());
 $server->addPlugin(new \Sabre\CardDAV\VCFExportPlugin());
 
-// lets goooooo
+// run the server
 $server->exec();
