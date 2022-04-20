@@ -24,6 +24,7 @@ class Util {
    * be raw strings (eg. "attr=value") or an array of attribute-value pairs.
    *
    * If a string is given, the enclosing parens are optional.
+   *
    * If no conditions are provided, then the empty string is returned.
    *
    * For example:
@@ -95,10 +96,9 @@ class Util {
    * its members. The option is useful for getting all the groups in a nested
    * hierarchy.
    *
-   * @param \FreeIPA\Connection $ipaConn : freeipa connection object
-   *
-   * @param array $groupnames  : list of group names
-   * @param bool  $includeSelf : whether to match the groups themselves
+   * @param \FreeIPA\Connection $ipaConn     : freeipa connection object
+   * @param array               $groupnames  : list of group names
+   * @param bool                $includeSelf : whether to match the groups themselves
    *
    * @return string
    */
