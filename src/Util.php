@@ -104,7 +104,7 @@ class Util {
     $conditions = [];
 
     foreach ($groupnames as $groupname) {
-      $conditions[] = ['memberOf', $ipaConn->resolveDn('cn='.ldap_escape($groupname), Group::LDAP_CONTAINER)];
+      $conditions[] = ['memberOf', $ipaConn->resolveDn(Group::getRelativeDn($groupname))];
       if ($includeSelf) {
         $conditions[] = 'cn=' . ldap_escape($groupname);
       }

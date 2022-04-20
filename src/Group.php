@@ -36,20 +36,6 @@ class Group {
   }
 
   /**
-   * Convert a groupname to an escaped relative LDAP DN
-   *
-   * For example:
-   *   getRelativeDn('hr') -> 'uid=\68\72,cn=groups,cn=accounts'
-   *
-   * @param string $groupname
-   *
-   * @return string
-   */
-  protected static function getRelativeDn($groupname) {
-    return 'cn=' . ldap_escape($groupname) . ',' . self::LDAP_CONTAINER;
-  }
-
-  /**
    * Construct a Group object from an LDAP group entry.
    *
    * @param array $entry
@@ -133,6 +119,20 @@ class Group {
   }
 
   /**
+   * Convert a groupname to an escaped relative LDAP DN
+   *
+   * For example:
+   *   getRelativeDn('hr') -> 'uid=\68\72,cn=groups,cn=accounts'
+   *
+   * @param string $groupname
+   *
+   * @return string
+   */
+  public static function getRelativeDn($groupname) {
+    return 'cn=' . ldap_escape($groupname) . ',' . self::LDAP_CONTAINER;
+  }
+
+  /**
    * Returns an array of principal URIs corresponding to each of the group's
    * members, subject to $allowedGroups.
    *
@@ -148,7 +148,7 @@ class Group {
       User::LDAP_CONTAINER,
       Util::buildFilter('allof',
         ['objectClass', User::LDAP_OBJECT_CLASS],
-        ['memberof',  $ipaConn->resolveDn($this->getRelativeDn())],
+        ['memberof',  $ipaConn->resolveDn(self::getRelativeDn($this->name))],
         Util::buildMemberOfFilter($ipaConn, $allowedGroups)),
       ['uid']))
     {

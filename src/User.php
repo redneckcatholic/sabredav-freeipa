@@ -38,20 +38,6 @@ class User {
   }
 
   /**
-   * Convert a username to an escaped relative LDAP DN
-   *
-   * For example:
-   *   getRelativeDn('joe') -> 'uid=\6a\6f\65,cn=users,cn=accounts'
-   *
-   * @param string $username
-   *
-   * @return string
-   */
-  protected static function getRelativeDn($username) {
-    return 'uid=' . ldap_escape($username) . ',' . self::LDAP_CONTAINER;
-  }
-
-  /**
    * Construct a User object from an LDAP user entry.
    *
    * @param array $entry
@@ -65,6 +51,21 @@ class User {
       $entry['mail'][0]
     );
   }
+
+  /**
+   * Convert a username to an escaped relative LDAP DN
+   *
+   * For example:
+   *   getRelativeDn('joe') -> 'uid=\6a\6f\65,cn=users,cn=accounts'
+   *
+   * @param string $username
+   *
+   * @return string
+   */
+  public static function getRelativeDn($username) {
+    return 'uid=' . ldap_escape($username) . ',' . self::LDAP_CONTAINER;
+  }
+
 
   /**
    * Returns an array of User objects for each user in the FreeIPA directory matching
