@@ -35,6 +35,27 @@ class Group {
     $this->description = $description;
   }
 
+  /**
+   * Convert a groupname to an escaped relative LDAP DN
+   *
+   * For example:
+   *   getRelativeDn('hr') -> 'uid=\68\72,cn=groups,cn=accounts'
+   *
+   * @param string $groupname
+   *
+   * @return string
+   */
+  protected static function getRelativeDn($groupname) {
+    return 'cn=' . ldap_escape($groupname) . ',' . self::LDAP_CONTAINER;
+  }
+
+  /**
+   * Construct a Group object from an LDAP group entry.
+   *
+   * @param array $entry
+   *
+   * @return \FreeIPA\Group
+   */
   protected static function fromLdapEntry($entry) {
     return new self(
       $entry['cn'][0],
@@ -42,11 +63,23 @@ class Group {
     );
   }
 
-  protected static function getRelativeDn($groupname) {
-    return 'cn=' . ldap_escape($groupname) . ',' . self::LDAP_CONTAINER;
-  }
-
-  public static function search($ipaConn, $searchProperties = [], $test = 'anyof', $allowedGroups = []) {
+  /**
+   * Returns an array of Group objects for each group in the FreeIPA directory matching
+   * the given DAV search properties, subject to $allowedGroups.
+   *
+   * @param \FreeIPA\Connection $ipaConn          : freeipa connection object
+   * @param array               $searchProperties : search conditions, as requested by SabreDAV
+   * @param string              $test             : either 'allof' or 'anyof'
+   * @param array               $allowedGroups    : only consider the given groups
+   *
+   * @return array
+   */
+  public static function search(
+    \FreeIPA\Connection $ipaConn,
+    array $searchProperties = [],
+    $test = 'anyof',
+    array $allowedGroups = [])
+  {
     $groups = [];
 
     // for each group matching $filter
@@ -65,7 +98,27 @@ class Group {
     return $groups;
   }
 
-  public static function get($ipaConn, $groupname, $searchProperties = [], $test = 'anyof', $allowedGroups = []) {
+  /**
+   * Returns the Group from FreeIPA with the given groupname that matches the
+   * given DAV search properties, subject to $allowedGroups.
+   *
+   * If no matching group is found, null is returned.
+   *
+   * @param \FreeIPA\Connection $ipaConn          : freeipa connection object
+   * @param string              $groupname        : freeipa group cn
+   * @param array               $searchProperties : search conditions, as requested by SabreDAV
+   * @param string              $test             : either 'allof' or 'anyof'
+   * @param array               $allowedGroups    : only consider the given groups
+   *
+   * @return \FreeIPA\Group|null
+   */
+  public static function get(
+    \FreeIPA\Connection $ipaConn,
+    $groupname,
+    array $searchProperties = [],
+    $test = 'anyof',
+    array $allowedGroups = [])
+  {
     if ($entry = $ipaConn->read(
       self::getRelativeDn($groupname),
       Util::buildFilter('allof',
@@ -80,7 +133,16 @@ class Group {
     return null;
   }
 
-  public function getMemberPrincipals($ipaConn, $allowedGroups = []) {
+  /**
+   * Returns an array of principal URIs corresponding to each of the group's
+   * members, subject to $allowedGroups.
+   *
+   * @param \FreeIPA\Connection $ipaConn       : freeipa connection object
+   * @param array               $allowedGroups : only consider the given groups
+   *
+   * @return array
+   */
+  public function getMemberPrincipals(\FreeIPA\Connection $ipaConn, array $allowedGroups = []) {
     $memberPrincipals = [];
 
     if ($entries = $ipaConn->search(
@@ -88,6 +150,7 @@ class Group {
       Util::buildFilter('allof',
         ['objectClass', User::LDAP_OBJECT_CLASS],
         ['memberof',  $ipaConn->resolveDn('cn='.ldap_escape($this->name), self::LDAP_CONTAINER)],
+        // TODO: is this necessary?
         Util::buildMemberOfFilter($ipaConn, $allowedGroups)),
       ['uid']))
     {
@@ -99,6 +162,11 @@ class Group {
     return $memberPrincipals;
   }
 
+  /**
+   * Convert a Group to SabreDAV's representation of a principal.
+   *
+   * @return array
+   */
   public function toPrincipal() {
     return [
       'uri' => self::PRINCIPAL_PREFIX . $this->name,
@@ -106,6 +174,11 @@ class Group {
     ];
   }
 
+  /**
+   * Get the username.
+   *
+   * @return string
+   */
   public function getName() {
     return $this->name;
   }

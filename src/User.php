@@ -37,11 +37,28 @@ class User {
     $this->email = $email;
   }
 
-  protected static function getRelativeDn($uid) {
-    return 'uid=' . ldap_escape($uid) . ',' . self::LDAP_CONTAINER;
+  /**
+   * Convert a username to an escaped relative LDAP DN
+   *
+   * For example:
+   *   getRelativeDn('joe') -> 'uid=\6a\6f\65,cn=users,cn=accounts'
+   *
+   * @param string $username
+   *
+   * @return string
+   */
+  protected static function getRelativeDn($username) {
+    return 'uid=' . ldap_escape($username) . ',' . self::LDAP_CONTAINER;
   }
 
-  protected static function fromLdapEntry($entry) {
+  /**
+   * Construct a User object from an LDAP user entry.
+   *
+   * @param array $entry
+   *
+   * @return \FreeIPA\User
+   */
+  protected static function fromLdapEntry(array $entry) {
     return new self(
       $entry['uid'][0],
       isset($entry['displayname'][0]) ? $entry['displayname'][0] : $entry['uid'][0],
@@ -49,7 +66,23 @@ class User {
     );
   }
 
-  public static function search($ipaConn, $searchProperties = [], $test = 'allof', $allowedGroups = []) {
+  /**
+   * Returns an array of User objects for each user in the FreeIPA directory matching
+   * the given DAV search properties, subject to $allowedGroups.
+   *
+   * @param \FreeIPA\Connection $ipaConn          : freeipa connection object
+   * @param array               $searchProperties : search conditions, as requested by SabreDAV
+   * @param string              $test             : either 'allof' or 'anyof'
+   * @param array               $allowedGroups    : only consider members of the given groups
+   *
+   * @return array
+   */
+  public static function search(
+    \FreeIPA\Connection $ipaConn,
+    array $searchProperties = [],
+    $test = 'allof',
+    array $allowedGroups = [])
+  {
     $users = [];
 
     // for each user matching filter
@@ -69,7 +102,27 @@ class User {
     return $users;
   }
 
-  public static function get($ipaConn, $username, $searchProperties = [], $test = 'allof', $allowedGroups = []) {
+  /**
+   * Returns the User from FreeIPA with the given username that matches the
+   * given DAV search properties, subject to $allowedGroups.
+   *
+   * If no matching user is found, null is returned.
+   *
+   * @param \FreeIPA\Connection $ipaConn          : freeipa connection object
+   * @param string              $username         : freeipa user uid
+   * @param array               $searchProperties : search conditions, as requested by SabreDAV
+   * @param string              $test             : either 'allof' or 'anyof'
+   * @param array               $allowedGroups    : only consider members of the given groups
+   *
+   * @return \FreeIPA\User|null
+   */
+  public static function get(
+    \FreeIPA\Connection $ipaConn,
+    $username,
+    array $searchProperties = [],
+    $test = 'allof',
+    array $allowedGroups = [])
+  {
     if ($entry = $ipaConn->read(
       self::getRelativeDn($username),
       Util::buildFilter('allof',
@@ -84,6 +137,15 @@ class User {
     return null;
   }
 
+  /**
+   * Returns an array of principal URIs corresponding to each of the user's
+   * groups, subject to $allowedGroups.
+   *
+   * @param \FreeIPA\Connection $ipaConn       : freeipa connection object
+   * @param array               $allowedGroups : only consider the given groups
+   *
+   * @return array
+   */
   public function getGroupPrincipals($ipaConn, $allowedGroups = []) {
     $groupPrincipals = [];
 
@@ -117,6 +179,11 @@ class User {
     return $groupPrincipals;
   }
 
+  /**
+   * Convert a User to SabreDAV's representation of a principal.
+   *
+   * @return array
+   */
   public function toPrincipal() {
     return [
       'uri' => self::PRINCIPAL_PREFIX . $this->uid,
@@ -125,6 +192,11 @@ class User {
     ];
   }
 
+  /**
+   * Get the username.
+   *
+   * @return string
+   */
   public function getUid() {
     return $this->uid;
   }
