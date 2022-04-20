@@ -101,16 +101,10 @@ looks like this:
     Indirect Member users: benedict, leo, michael
 
 Then SabreDAV would only see the following groups:
+`dav-access`, `accounting`, `human-resources`
 
-   - dav-access
-   - accounting
-   - human-resources
-
-and similarly, only the members of those groups would show up as SabreDAV users:
-
-   - benedict
-   - leo
-   - michael
+And similarly, only the members of those groups would show up as SabreDAV users:
+`benedict`, `leo`, `michael`
 
 This type of configuration is possible because FreeIPA supports nested groups
 (a group itself can be a member of another group).
