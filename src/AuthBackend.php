@@ -7,10 +7,12 @@
  * @license https://opensource.org/licenses/BSD-2-Clause
  * @version 0.01
  *
- * This authentication backend assumes that authentication has been configured
- * in Apache using the local FreeIPA domain. The only reason to use this module
- * (rather than the included Apache backend) is to strip the realm component
- * from the REMOTE_USER variable (GssapiLocalName is broken under gssproxy).
+ * This backend assumes that the webserver handles authentication using
+ * mod_gssapi or similar, and checks for membership in one or more groups
+ * before granting access.
+ *
+ * Upon successful login, a default calendar and group are created for the user
+ * if none already exist.
  *
  * php-ldap compiled with SASL support is required, along with accessible
  * kerberos credentials. Check the README for more information.
@@ -19,7 +21,11 @@
  *
  *   $ipa = new \FreeIPA\Connection();
  *   $allowedGroups = ['sabredav-access'];
- *   $authBackend = new \FreeIpa\AuthBackend($ipa, $allowedGroups);
+ *   $authBackend = new \FreeIpa\AuthBackend(
+ *     $ipa,
+ *     $caldavBackend,
+ *     $carddavBackend,
+ *     $allowedGroups);
  *
  * If the $allowedGroups argument is given, then membership in at least one of
  * the specified groups is required to login.
@@ -40,11 +46,25 @@ class AuthBackend implements \Sabre\DAV\Auth\Backend\BackendInterface {
   const PRINCIPAL_PREFIX = 'principals/';
 
   protected $ipa;
+  protected $caldavBackend;
+  protected $carddavBackend;
   protected $allowedGroups;
 
-  public function __construct(\FreeIPA\Connection $ipa, $allowedGroups = []) {
-    $this->ipa = $ipa;
-    $this->allowedGroups = $allowedGroups;
+  protected $defaultCalendarName           = 'personal';
+  protected $defaultCalendarDescription    = 'Personal';
+  protected $defaultAddressBookName        = 'personal';
+  protected $defaultAddressBookDescription = 'Personal';
+
+  public function __construct(
+    \FreeIPA\Connection $ipa,
+    \Sabre\CalDAV\Backend\BackendInterface $caldavBackend,
+    \Sabre\CardDAV\Backend\BackendInterface $carddavBackend,
+    array $allowedGroups = [])
+  {
+    $this->ipa            = $ipa;
+    $this->caldavBackend  = $caldavBackend;
+    $this->carddavBackend = $carddavBackend;
+    $this->allowedGroups  = $allowedGroups;
   }
 
   /**
@@ -93,7 +113,25 @@ class AuthBackend implements \Sabre\DAV\Auth\Backend\BackendInterface {
       return [false, "user {$userParts[0]} failed group authorization"];
     }
 
-    return [true, self::PRINCIPAL_PREFIX . $userParts[0]];
+    $userPrincipal = self::PRINCIPAL_PREFIX . $userParts[0];
+
+    /* Create a default calendar and addressbook if none exist.
+     */
+    if (empty($this->caldavBackend->getCalendarsForUser($userPrincipal))) {
+      $this->caldavBackend->createCalendar(
+        $userPrincipal,
+        $this->defaultCalendarName,
+        ['{DAV:}displayname' => $this->defaultCalendarDescription]);
+    }
+
+    if (empty($this->carddavBackend->getAddressBooksForUser($userPrincipal))) {
+      $this->carddavBackend->createAddressBook(
+        $userPrincipal,
+        $this->defaultAddressBookName,
+        ['{DAV:}displayname' => $this->defaultAddressBookDescription]);
+    }
+
+    return [true, $userPrincipal];
   }
 
   /**
@@ -116,4 +154,52 @@ class AuthBackend implements \Sabre\DAV\Auth\Backend\BackendInterface {
   public function challenge(RequestInterface $request, ResponseInterface $response) {
     // intentional no-op
   }
+
+  /**
+   * Set the name of the default calendar. This is the basename component of the
+   * calendar's URI.
+   *
+   * @param string $name
+   */
+  public function setDefaultCalendarName($name) {
+    $this->defaultCalendarName = $name;
+  }
+
+  /**
+   * Set the description for the default calendar.
+   *
+   * @param string $name
+   */
+  public function setDefaultCalendarDescription($description) {
+    $this->defaultCalendarDescription = $description;
+  }
+
+  /**
+   * Set the name of the default addressbook. This is the basename component of
+   * the * addressbook's URI.
+   *
+   * @param string $name
+   */
+  public function setDefaultAddressBookName($name) {
+    $this->defaultAddressBookName = $name;
+  }
+
+  /**
+   * Set the description for the default addressbook.
+   *
+   * @param string $name
+   */
+  public function setDefaultAddressBookDescription($description) {
+    $this->defaultAddressBookDescription = $description;
+  }
+
+  /**
+   * Set the groups that are allowed to login.
+   *
+   * @param array $allowedGroups
+   */
+  public function setAllowedGroups(array $allowedGroups) {
+    $this->allowedGroups = $allowedGroups;
+  }
+
 }

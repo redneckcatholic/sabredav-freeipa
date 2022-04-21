@@ -19,6 +19,9 @@ Two backends are provided:
   Optionally, you can limit logins to members of certain FreeIPA groups using the
   `$allowedGroups` parameter.
 
+  Upon successful login, a default calendar and addressbook will be created for the
+  user if none already exist.
+
 - `\FreeIPA\PrincipalBackend`: this is a principal backend that retrieves users and
   groups from FreeIPA. You can (and should) limit the users and groups returned
   using the `$allowedGroups` parameter.
@@ -76,8 +79,15 @@ $allowedGroups = [
   'dav-access'
 ];
 
-$authBackend      = new \FreeIPA\AuthBackend($ipa, $allowedGroups);
-$principalBackend = new \FreeIPA\PrincipalBackend($ipa, $allowedGroups);
+$authBackend = new \FreeIPA\AuthBackend(
+  $ipa,
+  $caldavBackend,
+  $carddavBackend,
+  $allowedGroups);
+
+$principalBackend = new \FreeIPA\PrincipalBackend(
+  $ipa,
+  $allowedGroups);
 ```
 
 Note especially the `$allowedGroups` array. You should use this parameter to limit

@@ -41,10 +41,10 @@ $allowedGroups = [
 ];
 
 // backends
-$authBackend      = new \FreeIPA\AuthBackend($ipa, $allowedGroups);
-$principalBackend = new \FreeIPA\PrincipalBackend($ipa, $allowedGroups);
 $caldavBackend    = new \Sabre\CalDAV\Backend\PDO($pdo);
 $carddavBackend   = new \Sabre\CardDAV\Backend\PDO($pdo);
+$principalBackend = new \FreeIPA\PrincipalBackend($ipa, $allowedGroups);
+$authBackend      = new \FreeIPA\AuthBackend($ipa, $caldavBackend, $carddavBackend, $allowedGroups);
 
 // directory structure
 $server = new Sabre\DAV\Server([
