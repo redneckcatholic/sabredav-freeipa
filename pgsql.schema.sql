@@ -16,7 +16,7 @@ CREATE UNIQUE INDEX addressbooks_ukey
 CREATE TABLE cards (
     id SERIAL NOT NULL,
     addressbookid INTEGER NOT NULL,
-    carddata BYTEA,
+    carddata TEXT USING convert_from(carddata, 'utf8'),
     uri VARCHAR(200),
     lastmodified INTEGER,
     etag VARCHAR(32),
@@ -44,7 +44,7 @@ CREATE INDEX addressbookchanges_addressbookid_synctoken_ix
     ON addressbookchanges USING btree (addressbookid, synctoken);
 CREATE TABLE calendarobjects (
     id SERIAL NOT NULL,
-    calendardata BYTEA,
+    calendardata TEXT,
     uri VARCHAR(200),
     calendarid INTEGER NOT NULL,
     lastmodified INTEGER,
@@ -141,7 +141,7 @@ CREATE INDEX calendarchanges_calendarid_synctoken_ix
 CREATE TABLE schedulingobjects (
     id SERIAL NOT NULL,
     principaluri VARCHAR(255),
-    calendardata BYTEA,
+    calendardata TEXT,
     uri VARCHAR(200),
     lastmodified INTEGER,
     etag VARCHAR(32),
@@ -174,7 +174,7 @@ CREATE TABLE propertystorage (
     path VARCHAR(1024) NOT NULL,
     name VARCHAR(100) NOT NULL,
     valuetype INT,
-    value BYTEA
+    value TEXT
 );
 
 ALTER TABLE ONLY propertystorage
